@@ -29,10 +29,11 @@ public class AuthHelper {
     static final Long STATE_TTL = Long.parseLong(Config.getProperty("app.stateTTL"));
     static final String REDIRECT_URI = Config.getProperty("app.redirectUri");
     static final String HOME_PAGE = Config.getProperty("app.homePage");
+    static final String PROMPT = Config.getProperty("app.prompt");
 
     public static ConfidentialClientApplication getConfidentialClientInstance(final String policy)
             throws Exception {
-        ConfidentialClientApplication confClientInstance = null;
+        ConfidentialClientApplication confClientInstance;
         Config.logger.log(Level.INFO, "Getting confidential client instance");
         try {
             final IClientSecret secret = ClientCredentialFactory.createFromSecret(SECRET);
@@ -138,6 +139,15 @@ public class AuthHelper {
         if (policy.equals(EDIT_PROFILE_POLICY) && msalAuth.getAuthenticated()) {
             parameters = AuthorizationRequestUrlParameters.builder(REDIRECT_URI, Collections.singleton(SCOPES))
                     .responseMode(ResponseMode.QUERY).state(state).nonce(nonce).build();
+        } else if (Config.getProperty("app.prompt") != null) {
+            if (!PROMPT.trim().equals("")) {
+                Prompt prompt = Prompt.valueOf(PROMPT);
+                parameters = AuthorizationRequestUrlParameters.builder(REDIRECT_URI, Collections.singleton(SCOPES))
+                        .responseMode(ResponseMode.QUERY).prompt(prompt).state(state).nonce(nonce).build();
+            } else {
+                parameters = AuthorizationRequestUrlParameters.builder(REDIRECT_URI, Collections.singleton(SCOPES))
+                        .responseMode(ResponseMode.QUERY).state(state).nonce(nonce).build();
+            }
         } else {
             parameters = AuthorizationRequestUrlParameters.builder(REDIRECT_URI, Collections.singleton(SCOPES))
                     .responseMode(ResponseMode.QUERY).prompt(Prompt.SELECT_ACCOUNT).state(state).nonce(nonce).build();
@@ -225,9 +235,9 @@ public class AuthHelper {
         Config.logger.log(Level.FINE, "session state is: {0} \n request state param is: {1}", new String[] {sessionState, stateFromRequest});
 
         // if state is null or doesn't match or TTL expired, throw exception
-        if (sessionState == null || stateFromRequest == null || !sessionState.equals(stateFromRequest)
+        if (sessionState == null || !sessionState.equals(stateFromRequest)
                 || msalAuth.getStateDate().before(new Date(now.getTime() - (STATE_TTL * 1000)))) {
-            throw new Exception("State mismatch or null or empty or expired on validateState!");
+            throw new Exception("State mismatch or null or empty or expired on validateState (sessionState=" + sessionState + ", stateFromRequest=" + stateFromRequest + ", STATE_TTL=" + STATE_TTL + "): msalAuth.getStateDate()=" + msalAuth.getStateDate() + " is before " + new Date(now.getTime() - (STATE_TTL * 1000)));
         }
         Config.logger.log(Level.INFO, "confirmed that state is valid and matches!");
         msalAuth.setState(null); // don't allow re-use of state

@@ -18,6 +18,12 @@
 <body>
 
 <%@ include file="navbar.jsp" %>
+<%
+    // enable call / (no need to call /index )
+    if (request.getAttribute("bodyContent") == null){
+        request.setAttribute("bodyContent", "auth/status.jsp");
+    }
+%>
 
 <div class="container body-content">
         <jsp:include page="${bodyContent}" ></jsp:include>
